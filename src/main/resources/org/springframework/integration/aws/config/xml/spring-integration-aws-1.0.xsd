@@ -348,6 +348,30 @@
 					</xsd:documentation>
 				</xsd:annotation>
 			</xsd:attribute>
+			<xsd:attribute name="filter" type="xsd:string">
+				<xsd:annotation>
+					<xsd:appinfo>
+						<tool:annotation kind="ref">
+							<tool:expected-type
+								type="org.springframework.integration.metadata.ConcurrentMetadataStore" />
+						</tool:annotation>
+					</xsd:appinfo>
+					<xsd:documentation>
+						Allows you to specify a reference to a
+						[org.springframework.integration.file.filters.FileListFilter]
+						bean. This filter is applied to files on the remote server and
+						only files that pass the filter are retrieved.
+					</xsd:documentation>
+				</xsd:annotation>
+			</xsd:attribute>
+			<xsd:attribute name="container-number" type="xsd:string">
+				<xsd:annotation>
+					<xsd:documentation>
+						The number of containers for polling data from s3 parallel. The value
+						defaults to "1"
+					</xsd:documentation>
+				</xsd:annotation>
+			</xsd:attribute>
 		</xsd:complexType>
 	</xsd:element>
 

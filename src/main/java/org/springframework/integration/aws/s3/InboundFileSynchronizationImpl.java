@@ -29,12 +29,12 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.integration.aws.s3.core.AmazonS3Object;
 import org.springframework.integration.aws.s3.core.AmazonS3Operations;
 import org.springframework.integration.aws.s3.core.PaginatedObjectsView;
 import org.springframework.integration.aws.s3.core.S3ObjectSummary;
+import org.springframework.integration.metadata.ConcurrentMetadataStore;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
@@ -64,10 +64,14 @@ public class InboundFileSynchronizationImpl implements InboundFileSynchronizer, 
 	private final InboundLocalFileOperations fileOperations;
 
 	private volatile FileNameFilter filter;
+	
+	private volatile String containerNumber;
 
 	private volatile String fileWildcard;
 
 	private volatile String fileNameRegex;
+	
+	private volatile ConcurrentMetadataStore redisStore;
 
 	private final Lock lock = new ReentrantLock();
 
@@ -97,8 +101,9 @@ public class InboundFileSynchronizationImpl implements InboundFileSynchronizer, 
 			filter = new RegexFileNameFilter(fileNameRegex);
 		}
 		else {
-			filter = new AlwaysTrueFileNamefilter();    //Match all
+			filter = new RedisFileNameFilter(redisStore);
 		}
+		
 
 		if (acceptSubFolders) {
 			((AbstractFileNameFilter) filter).setAcceptSubFolders(true);
@@ -141,13 +146,29 @@ public class InboundFileSynchronizationImpl implements InboundFileSynchronizer, 
 					break;    //No files to sync
 				nextMarker = paginatedView.getNextMarker();
 				List<S3ObjectSummary> summaries = paginatedView.getObjectSummary();
+				int index = 0;
 				for (S3ObjectSummary summary : summaries) {
 					String key = summary.getKey();
 					if (key.endsWith("/")) {
 						continue;
 					}
+					
+					Integer containerNum = 1;
+					try { 
+						containerNum = Integer.parseInt(containerNumber); 
+				    } catch(NumberFormatException e) { 
+				        System.out.println("Container Number can't be parsed"); 
+				    } catch(NullPointerException e) {
+				    	System.out.println("Container Number is NULL");
+				    }
+					Assert.isTrue(containerNum > 0, "Container Number should greater than 0!");
+					if (index > summaries.size() / containerNum)
+						break;
+					
 					if (!filter.accept(key))
 						continue;
+					
+					index++;
 					//The folder is the root as the key is relative to bucket
 					AmazonS3Object s3Object = null;
 					try {
@@ -340,6 +361,22 @@ public class InboundFileSynchronizationImpl implements InboundFileSynchronizer, 
 
 	public void setFileWildcard(String fileWildcard) {
 		this.fileWildcard = fileWildcard;
+	}
+	
+	/* (non-Javadoc)
+	 * @see org.springframework.integration.aws.s3.InboundFileSynchronizer#setRedisStore(java.lang.String)
+	 */
+	
+	public void setRedisStore(ConcurrentMetadataStore redisStore) {
+		this.redisStore = redisStore;
+	}
+	
+	/* (non-Javadoc)
+	 * @see org.springframework.integration.aws.s3.InboundFileSynchronizer#setContainerNumber(java.lang.String)
+	 */
+	
+	public void setContainerNumber(String containerNumber) {
+		this.containerNumber = containerNumber;
 	}
 
 	@Override

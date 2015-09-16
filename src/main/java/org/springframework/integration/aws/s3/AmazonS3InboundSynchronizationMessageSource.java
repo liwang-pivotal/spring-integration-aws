@@ -30,6 +30,7 @@ import org.springframework.integration.aws.s3.core.AmazonS3Operations;
 import org.springframework.integration.aws.s3.core.DefaultAmazonS3Operations;
 import org.springframework.integration.context.IntegrationObjectSupport;
 import org.springframework.integration.core.MessageSource;
+import org.springframework.integration.metadata.ConcurrentMetadataStore;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -57,6 +58,8 @@ public class AmazonS3InboundSynchronizationMessageSource extends
 	private volatile int maxObjectsPerBatch;
 	private volatile String fileNameWildcard;
 	private volatile String fileNameRegex;
+	private volatile ConcurrentMetadataStore filter;
+	private volatile String containerNumber;
 	private volatile BlockingQueue<File> filesQueue;
 	private volatile AmazonS3Operations s3Operations;
 	private volatile boolean acceptSubFolders;
@@ -86,7 +89,7 @@ public class AmazonS3InboundSynchronizationMessageSource extends
 	@Override
 	protected void onInit() throws Exception {
 		Assert.notNull(directoryExpression, "Local directory to synchronize to is not set");
-
+		
 		ctx = new StandardEvaluationContext();
 		BeanFactory factory = getBeanFactory();
 		if(factory != null) {
@@ -130,6 +133,10 @@ public class AmazonS3InboundSynchronizationMessageSource extends
 		if(StringUtils.hasText(fileNameRegex)) {
 			synchronizationImpl.setFileNamePattern(fileNameRegex);
 		}
+		if(!StringUtils.hasText(fileNameWildcard) && !StringUtils.hasText(fileNameRegex)) {
+			synchronizationImpl.setRedisStore(filter);
+		}
+		synchronizationImpl.setContainerNumber(containerNumber);
 		synchronizationImpl.setAcceptSubFolders(acceptSubFolders);
 		synchronizationImpl.afterPropertiesSet();
 		this.synchronizer = synchronizationImpl;
@@ -192,6 +199,29 @@ public class AmazonS3InboundSynchronizationMessageSource extends
 		Assert.hasText(fileNameRegex, "Provided file regex is null or empty string");
 		Assert.isTrue(!StringUtils.hasText(fileNameWildcard), "File name regex and wildcard are mutually exclusive");
 		this.fileNameRegex = fileNameRegex;
+	}
+	
+	/**
+	 * Sets the filter to be used to match the objects in S3 bucket. This attribute is mutually exclusive
+	 * to fileName by using Redis.
+	 *
+	 * @param filter
+	 */
+	public void setFilter(ConcurrentMetadataStore filter) {
+		Assert.notNull(filter, "Provided redis filter is null or empty string");
+		Assert.isTrue(!StringUtils.hasText(fileNameWildcard) && !StringUtils.hasText(fileNameRegex), "Redis filter can only exist without regex and wildcard");
+		this.filter = filter;
+	}
+	
+	/**
+	 * Sets the number of containers for polling data from s3 parallel. This string should be Integer greater than
+	 * 0.
+	 *
+	 * @param containerNumber
+	 */
+	public void setContainerNumber(String containerNumber) {
+		Assert.notNull(containerNumber, "Provided container number is null or empty string");
+		this.containerNumber = containerNumber;
 	}
 
 	/**

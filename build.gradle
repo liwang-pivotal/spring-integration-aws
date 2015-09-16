@@ -53,6 +53,7 @@ dependencies {
 	compile "org.springframework.integration:spring-integration-core:$springIntegrationVersion"
 	compile "org.springframework.cloud:spring-cloud-aws-messaging:$springCloudAwsVersion"
 	compile "commons-io:commons-io:$commonsIoVersion"
+    compile "org.springframework.integration:spring-integration-file:4.1.6.RELEASE"
 
 	testCompile "org.springframework.integration:spring-integration-test:$springIntegrationVersion"
 
