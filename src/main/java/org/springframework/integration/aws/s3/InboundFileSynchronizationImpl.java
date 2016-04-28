@@ -244,6 +244,7 @@ public class InboundFileSynchronizationImpl implements InboundFileSynchronizer, 
 				fileOperations.writeToFile(baseDirectory, fileName, s3Object.getInputStream());
 			}
 			catch (IOException e) {
+				logger.error(e);
 				logger.error("Caught Exception while writing to file " + file.getAbsolutePath());
 				//continue with next file.
 			}
